@@ -1,0 +1,233 @@
+
+  <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>My Game Hub</title>
+<style>
+  body {
+    margin:0;
+    font-family: Arial, sans-serif;
+    background:#0a2f2f;
+    color:white;
+  }
+  header {
+    background:#008080;
+    padding:15px;
+    text-align:center;
+    font-size:24px;
+    font-weight:bold;
+  }
+  #searchBar {
+    width:90%;
+    padding:10px;
+    margin:10px auto;
+    display:block;
+    border-radius:5px;
+    border:none;
+  }
+  #gameContainer {
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:10px;
+    padding:10px;
+  }
+  .game-card {
+    background:#006666;
+    width:160px;
+    text-align:center;
+    border-radius:10px;
+    cursor:pointer;
+    transition: transform 0.2s;
+    padding:5px;
+  }
+  .game-card:hover { transform: scale(1.05); }
+  .game-card img { width:100%; border-radius:8px; }
+  #favoritesContainer {
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:10px;
+    padding:10px;
+  }
+  #gameModal {
+    display:none;
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background:rgba(0,0,0,0.9);
+    justify-content:center; align-items:center;
+    z-index:1000;
+  }
+  #gameFrame {
+    width:80%; height:80%;
+    border:none;
+    border-radius:10px;
+  }
+  #closeModal {
+    position:absolute; top:10px; right:20px;
+    font-size:30px; cursor:pointer;
+    color:white;
+  }
+  #loadMoreBtn {
+    display:block;
+    margin:20px auto;
+    padding:10px 20px;
+    font-size:16px;
+    border:none;
+    border-radius:5px;
+    background:#008080;
+    cursor:pointer;
+  }
+  #adminLogin {
+    position:fixed;
+    top:10px; right:10px;
+    background:#004c4c;
+    padding:10px;
+    border-radius:5px;
+    cursor:pointer;
+  }
+</style>
+</head>
+<body>
+
+<header>My Game Hub</header>
+
+<input type="text" id="searchBar" placeholder="Search games...">
+
+<div id="gameContainer"></div>
+<button id="loadMoreBtn">Load More Games</button>
+
+<div id="favoritesContainer"></div>
+
+<div id="gameModal">
+  <span id="closeModal">&times;</span>
+  <iframe id="gameFrame"></iframe>
+</div>
+
+<div id="adminLogin">Admin</div>
+
+<script src="games.js"></script>
+
+<script>
+// --- Variables ---
+const gameContainer = document.getElementById("gameContainer");
+const favoritesContainer = document.getElementById("favoritesContainer");
+const searchBar = document.getElementById("searchBar");
+const loadMoreBtn = document.getElementById("loadMoreBtn");
+const gameModal = document.getElementById("gameModal");
+const gameFrame = document.getElementById("gameFrame");
+const closeModal = document.getElementById("closeModal");
+const adminLogin = document.getElementById("adminLogin");
+
+let currentIndex = 0;
+const pageSize = 40;
+let favorites = [];
+
+// --- NEW: Launcher Mode Toggle ---
+let launcherMode = true; // true = opens about:blank, false = uses modal
+
+// --- Display games ---
+function displayGames(list) {
+  list.forEach(game => {
+    const card = document.createElement("div");
+    card.className = "game-card";
+    card.innerHTML = `
+      <img src="${game.thumb}" alt="${game.title}">
+      <p>${game.title}</p>
+      <button onclick="addFavorite('${game.title}')">❤</button>
+    `;
+    card.onclick = (e) => {
+      if(e.target.tagName !== 'BUTTON') openGame(game.url);
+    };
+    gameContainer.appendChild(card);
+  });
+}
+
+function loadMore() {
+  const slice = games.slice(currentIndex, currentIndex + pageSize);
+  displayGames(slice);
+  currentIndex += pageSize;
+  if (currentIndex >= games.length) loadMoreBtn.style.display = "none";
+}
+
+loadMore();
+
+// --- Search ---
+searchBar.addEventListener("input", () => {
+  const query = searchBar.value.toLowerCase();
+  gameContainer.innerHTML = "";
+  currentIndex = 0;
+  const filtered = games.filter(g => g.title.toLowerCase().includes(query));
+  displayGames(filtered.slice(0, pageSize));
+});
+
+// --- Favorites ---
+function addFavorite(title) {
+  const game = games.find(g => g.title === title);
+  if (!favorites.includes(game)) {
+    favorites.push(game);
+    updateFavorites();
+  }
+}
+
+function updateFavorites() {
+  favoritesContainer.innerHTML = "";
+  favorites.forEach(game => {
+    const card = document.createElement("div");
+    card.className = "game-card";
+    card.innerHTML = `<img src="${game.thumb}" alt="${game.title}"><p>${game.title}</p>`;
+    card.onclick = () => openGame(game.url);
+    favoritesContainer.appendChild(card);
+  });
+}
+
+// --- UPDATED Game Open Function (Only thing changed) ---
+function openGame(url) {
+
+  if (launcherMode) {
+    const win = window.open("about:blank");
+
+    if (!win) {
+      alert("Popup blocked! Allow popups for this site.");
+      return;
+    }
+
+    win.document.write(`
+      <title>Loading...</title>
+      <style>
+        body{margin:0;background:black;}
+        iframe{position:fixed;top:0;left:0;width:100%;height:100%;border:none;}
+      </style>
+      <iframe src="${url}"></iframe>
+    `);
+
+  } else {
+    // original modal system still works
+    gameFrame.src = url;
+    gameModal.style.display = "flex";
+  }
+}
+
+closeModal.onclick = () => { 
+  gameModal.style.display = "none"; 
+  gameFrame.src = ""; 
+}
+
+loadMoreBtn.addEventListener("click", loadMore);
+
+// --- Admin login (unchanged) ---
+adminLogin.onclick = () => {
+  const password = prompt("Enter admin password:");
+  if(password === "admin123") {
+    alert("Admin access granted! Launcher mode toggled.");
+    launcherMode = !launcherMode; // bonus: lets you toggle modes
+  }
+  else alert("Wrong password!");
+};
+
+</script>
+
+</body>
+</html>
